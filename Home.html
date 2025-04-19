@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuizGo! ✏</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            font-family: 'Fredoka One', cursive;
+            box-sizing: border-box;
+        }
+        body {
+            background: url('images/bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            opacity: 0; /* Initially hidden */
+            animation: fadeInPop 0.5s ease-out forwards; /* Apply animation */
+        }
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 0;
+        }
+        .container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            transform: scale(0.9); /* Start slightly smaller */
+            opacity: 0;
+            animation: popIn 0.4s ease-out 0.1s forwards; /* Delayed animation */
+        }
+        h1 {
+            color: #00bfff;
+            font-size: 48px;
+            animation: popInOut 2s infinite;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+        @keyframes popInOut {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .button-container {
+            margin-top: 20px;
+        }
+        button {
+            display: block;
+            margin: 10px auto;
+            padding: 15px 25px;
+            font-size: 18px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background: #fff;
+            color: #111;
+            cursor: pointer;
+            transition: 0.3s;
+            transform: scale(0.95); /* Start slightly smaller */
+            opacity: 0;
+            animation: slideUp 0.3s ease-out forwards; /* Apply animation to each button */
+        }
+        button:hover {
+            background: #ddd;
+        }
+        .blue-button {
+            background-color: #3399ff;
+            color: white;
+            animation-delay: 0.1s; /* Slightly delay the blue button */
+        }
+        #settings-panel {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            transform: scale(0.9);
+            opacity: 0;
+            animation: popIn 0.3s ease-out 0.2s forwards; /* Delayed animation */
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        input[type=range] {
+            width: 200px;
+        }
+        .volume-value {
+            display: inline-block;
+            width: 30px;
+            text-align: center;
+        }
+
+        /* New Animations */
+        @keyframes fadeInPop {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <audio id="menuMusic" src="Music/Menu.ogg" loop muted></audio>
+    <audio id="clickSfx" src="Sfx/Click.wav"></audio>
+    <div class="container">
+        <h1>QuizGo! ✏</h1>
+        <div class="button-container">
+            <button onclick="playClick(); location.href='Quiz.html'">Start Quiz</button>
+            <button class="blue-button" onclick="toggleSettings(); playClick();">Settings ⚙️</button>
+        </div>
+        <div id="settings-panel">
+            <div class="slider-container">
+                <label>Music Volume: <span id="musicVolumeValue">100</span>%</label><br />
+                <input type="range" id="musicVolume" min="0" max="100" value="100" />
+            </div>
+            <div class="slider-container">
+                <label>SFX Volume: <span id="sfxVolumeValue">100</span>%</label><br />
+                <input type="range" id="sfxVolume" min="0" max="100" value="100" />
+            </div>
+        </div>
+    </div>
+    <script>
+        const music = document.getElementById('menuMusic');
+        const clickSfx = document.getElementById('clickSfx');
+
+        const musicSlider = document.getElementById('musicVolume');
+        const sfxSlider = document.getElementById('sfxVolume');
+
+        const musicValue = document.getElementById('musicVolumeValue');
+        const sfxValue = document.getElementById('sfxVolumeValue');
+
+        musicSlider.addEventListener('input', () => {
+            const value = musicSlider.value;
+            music.volume = value / 100;
+            musicValue.textContent = value;
+            localStorage.setItem('musicVolume', value);
+        });
+
+        sfxSlider.addEventListener('input', () => {
+            const value = sfxSlider.value;
+            clickSfx.volume = value / 100;
+            sfxValue.textContent = value;
+            localStorage.setItem('sfxVolume', value);
+        });
+
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function playClick() {
+            clickSfx.currentTime = 0;
+            clickSfx.play();
+        }
+
+        // Load saved volumes + attempt to play music on first user interaction
+        window.onload = () => {
+            // Apply initial styles for the pop-in effect
+            document.body.style.opacity = 0;
+            document.querySelector('.container').style.transform = 'scale(0.9)';
+            document.querySelector('.container').style.opacity = 0;
+            document.querySelectorAll('.button-container button').forEach(button => {
+                button.style.transform = 'scale(0.95)';
+                button.style.opacity = 0;
+            });
+            const settingsPanel = document.getElementById('settings-panel');
+            if (settingsPanel) {
+                settingsPanel.style.transform = 'scale(0.9)';
+                settingsPanel.style.opacity = 0;
+            }
+
+            const savedMusic = localStorage.getItem('musicVolume');
+            const savedSfx = localStorage.getItem('sfxVolume');
+
+            if (savedMusic !== null) {
+                musicSlider.value = savedMusic;
+                music.volume = savedMusic / 100;
+                musicValue.textContent = savedMusic;
+            } else {
+                music.volume = 1;
+            }
+
+            if (savedSfx !== null) {
+                sfxSlider.value = savedSfx;
+                clickSfx.volume = savedSfx / 100;
+                sfxValue.textContent = savedSfx;
+            }
+        };
+
+        // Attempt to play music on first user interaction
+        document.addEventListener('mousedown', playMenuMusic);
+        document.addEventListener('keydown', playMenuMusic);
+        document.addEventListener('touchstart', playMenuMusic);
+
+        function playMenuMusic() {
+            music.muted = false;
+            music.play().catch(err => {
+                console.warn("Autoplay blocked even with user interaction:", err);
+            });
+            // Remove the event listeners after the first interaction
+            document.removeEventListener('mousedown', playMenuMusic);
+            document.removeEventListener('keydown', playMenuMusic);
+            document.removeEventListener('touchstart', playMenuMusic);
+        }
+    </script>
+</body>
+</html>

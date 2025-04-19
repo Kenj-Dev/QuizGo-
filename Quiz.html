@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QuizGo! ✏</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            font-family: 'Fredoka One', cursive;
+            box-sizing: border-box;
+        }
+        body {
+            background: url('images/bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            opacity: 0; /* Initially hidden */
+            animation: fadeInPop 0.5s ease-out forwards; /* Apply animation */
+        }
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 0;
+        }
+        .container {
+            max-width: 600px;
+            width: 90%;
+            background: #fff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            transform: scale(0.9); /* Start slightly smaller */
+            opacity: 0;
+            animation: popIn 0.4s ease-out 0.1s forwards; /* Delayed animation */
+        }
+        button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 15px;
+            font-size: 18px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #eee;
+            color: #111;
+            cursor: pointer;
+            transition: 0.3s;
+            transform: scale(0.95); /* Start slightly smaller */
+            opacity: 0;
+            animation: slideUp 0.3s ease-out forwards; /* Apply animation to each button */
+        }
+        button:hover {
+            background: #ddd;
+        }
+        .hidden { display: none; }
+        h1, h2 { text-shadow: 2px 2px 4px rgba(0,0,0,0.4); }
+        h1 { color: #00bfff; }
+        #lose-screen h1 { color: red; }
+        #win-screen h1 { color: green; }
+        #question { color: #3399ff; }
+        h2 { color: #3399ff; }
+        #timer { font-size: 20px; margin: 10px 0; color: #ff4747; }
+        #hint { margin-top: 15px; color: #333; font-size: 16px; }
+        #questions-left {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 16px;
+            color: #fff;
+            z-index: 2;
+        }
+        #home-button {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            z-index: 2;
+            font-size: 14px;
+            padding: 10px 15px;
+            background-color: #28a745;
+            border: 2px solid #333;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            width: auto;
+            transform: scale(0.95); /* Start slightly smaller */
+            opacity: 0;
+            animation: slideInBottom 0.3s ease-out 0.2s forwards; /* Animation for home button */
+        }
+
+        /* New Animations */
+        @keyframes fadeInPop {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInBottom {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <audio id="quizMusic" src="Music/Quiz.ogg" loop muted></audio>
+    <audio id="clickSfx" src="Sfx/Click.wav"></audio>
+    <audio id="correctSfx" src="Sfx/Correct.wav"></audio>
+    <audio id="winSfx" src="Sfx/Win.wav"></audio>
+    <audio id="loseSfx" src="Sfx/Lose.wav"></audio>
+
+    <div class="container">
+        <div id="quiz-screen" class="screen">
+            <h2 id="question">Question goes here</h2>
+            <div id="timer">Time left: 20</div>
+            <div id="answers"></div>
+            <div id="hint"></div>
+            <div id="questions-left"></div>
+        </div>
+
+        <div id="lose-screen" class="screen hidden">
+            <h1>😵 You Lose!</h1>
+            <button onclick="restartGame()">🔁 Try Again</button>
+        </div>
+
+        <div id="win-screen" class="screen hidden">
+            <h1>🎉 You Win!</h1>
+            <p id="final-score"></p>
+            <p id="final-time"></p>
+            <button onclick="restartGame()">🎮 Play Again</button>
+        </div>
+    </div>
+
+    <button id="home-button" onclick="playClick(); location.href='Home.html'">🏠 Home</button>
+
+    <script>
+        const allQuestions = [
+            { q: "What is the capital of France?", a: ["Berlin", "Paris", "Madrid", "Rome"], correct: 1 },
+            { q: "What is 2 + 2?", a: ["3", "4", "5", "22"], correct: 1 },
+            { q: "What color is the sky?", a: ["Blue", "Green", "Red", "Yellow"], correct: 0 },
+            { q: "What is the largest planet in our solar system?", a: ["Earth", "Mars", "Jupiter", "Saturn"], correct: 2 },
+            { q: "What gas do plants breathe in?", a: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Hydrogen"], correct: 2 },
+            { q: "Which animal is known as the 'King of the Jungle'?", a: ["Tiger", "Lion", "Elephant", "Leopard"], correct: 1 },
+            { q: "How many legs does a spider typically have?", a: ["6", "8", "10", "12"], correct: 1 },
+            { q: "Which of these is a widely used programming language?", a: ["Banana", "JavaScript", "Potato", "Rocket"], correct: 1 },
+            { q: "Which planet in our solar system is closest to the sun?", a: ["Venus", "Earth", "Mercury", "Mars"], correct: 2 },
+            { q: "What geometric shape has three sides?", a: ["Square", "Triangle", "Circle", "Hexagon"], correct: 1 },
+            { q: "What is the chemical symbol for water?", a: ["Wo", "Wa", "H2O", "HO2"], correct: 2 },
+            { q: "Who painted the Mona Lisa?", a: ["Vincent van Gogh", "Leonardo da Vinci", "Pablo Picasso", "Claude Monet"], correct: 1 },
+            { q: "What is the currency of Japan?", a: ["Yuan", "Won", "Euro", "Yen"], correct: 3 },
+            { q: "What is the boiling point of water in Celsius?", a: ["0", "50", "100", "150"], correct: 2 },
+            { q: "Which continent is the Sahara Desert located in?", a: ["Asia", "Africa", "South America", "Australia"], correct: 1 },
+            { q: "What is the powerhouse of the cell?", a: ["Nucleus", "Mitochondria", "Ribosome", "Endoplasmic Reticulum"], correct: 1 },
+            { q: "What year did World War II end?", a: ["1939", "1945", "1950", "1941"], correct: 1 },
+            { q: "Who wrote the play 'Romeo and Juliet'?", a: ["Jane Austen", "William Shakespeare", "Charles Dickens", "Emily Brontë"], correct: 1 },
+            { q: "What is the speed of light in a vacuum (approximately)?", a: ["300,000 km/s", "150,000 km/s", "500,000 km/s", "1,000,000 km/s"], correct: 0 },
+            { q: "What is the capital of Australia?", a: ["Sydney", "Melbourne", "Canberra", "Perth"], correct: 2 },
+            { q: "What is the chemical symbol for oxygen?", a: ["Ox", "O2", "O", "Og"], correct: 2 },
+            { q: "Who developed the theory of relativity?", a: ["Isaac Newton", "Albert Einstein", "Stephen Hawking", "Galileo Galilei"], correct: 1 },
+            { q: "What is the largest ocean on Earth?", a: ["Atlantic Ocean", "Indian Ocean", "Arctic Ocean", "Pacific Ocean"], correct: 3 },
+            { q: "What is the freezing point of water in Fahrenheit?", a: ["0", "16", "32", "64"], correct: 2 },
+            { q: "Which country is known as the 'Land of the Rising Sun'?", a: ["China", "South Korea", "Japan", "Vietnam"], correct: 2 },
+            { q: "What is the main component of Earth's atmosphere?", a: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"], correct: 2 },
+            { q: "In what year did the first moon landing occur?", a: ["1959", "1969", "1979", "1989"], correct: 1 },
+            { q: "Who is the author of 'To Kill a Mockingbird'?", a: ["George Orwell", "Harper Lee", "F. Scott Fitzgerald", "Ernest Hemingway"], correct: 1 },
+            { q: "What is the value of pi (π) to two decimal places?", a: ["3.10", "3.14", "3.16", "3.20"], correct: 1 },
+            { q: "What is the capital of Canada?", a: ["Toronto", "Montreal", "Ottawa", "Vancouver"], correct: 2 },
+            { q: "What is the chemical symbol for gold?", a: ["Go", "Gd", "Au", "Ag"], correct: 2 },
+            { q: "Who invented the telephone?", a: ["Thomas Edison", "Alexander Graham Bell", "Nikola Tesla", "Guglielmo Marconi"], correct: 1 },
+            { q: "What is the smallest planet in our solar system?", a: ["Mars", "Mercury", "Venus", "Neptune"], correct: 1 },
+            { q: "What is the primary gas in the sun?", a: ["Oxygen", "Helium", "Nitrogen", "Hydrogen"], correct: 3 },
+            { q: "Which famous scientist formulated the laws of motion?", a: ["Marie Curie", "Isaac Newton", "Charles Darwin", "Max Planck"], correct: 1 },
+            { q: "What is the capital of Italy?", a: ["Paris", "Berlin", "Rome", "Athens"], correct: 2 },
+            { q: "What is the chemical symbol for silver?", a: ["Si", "Sl", "Ag", "Ar"], correct: 2 },
+            { q: "Who is credited with inventing the World Wide Web?", a: ["Bill Gates", "Steve Jobs", "Tim Berners-Lee", "Mark Zuckerberg"], correct: 2 },
+            { q: "What is Earth's natural satellite?", a: ["Mars", "Venus", "The Moon", "Titan"], correct: 2 },
+            { q: "What is the chemical symbol for carbon?", a: ["Ca", "Co", "Cr", "C"], correct: 3 },
+            { q: "Who wrote the novel 'Pride and Prejudice'?", a: ["Charlotte Brontë", "Jane Austen", "Mary Shelley", "George Eliot"], correct: 1 },
+            { q: "What is the capital of Brazil?", a: ["Rio de Janeiro", "Sao Paulo", "Brasília", "Buenos Aires"], correct: 2 },
+            { q: "What is the chemical symbol for iron?", a: ["Ir", "In", "Fe", "Fi"], correct: 2 },
+            { q: "Who is known for their work on radioactivity?", a: ["Albert Einstein", "Marie Curie", "Nikola Tesla", "Stephen Hawking"], correct: 1 },
+            { q: "What is the largest continent on Earth?", a: ["Africa", "Europe", "Asia", "North America"], correct: 2 },
+            { q: "What is the chemical symbol for sodium?", a: ["So", "Sd", "Na", "Sm"], correct: 2 },
+            { q: "Who is the founder of Microsoft?", a: ["Steve Jobs", "Bill Gates", "Jeff Bezos", "Elon Musk"], correct: 1 },
+            { q: "What is the chemical symbol for potassium?", a: ["Po", "Pt", "K", "Ka"], correct: 2 },
+            { q: "Who developed the polio vaccine?", a: ["Alexander Fleming", "Jonas Salk", "Edward Jenner", "Louis Pasteur"], correct: 1 },
+            { q: "What is the capital of China?", a: ["Shanghai", "Hong Kong", "Beijing", "Tokyo"], correct: 2 },
+            { q: "What is the largest bird in the world?", a: ["Eagle", "Albatross", "Ostrich", "Penguin"], correct: 2 },
+            { q: "Which instrument has 88 keys?", a: ["Guitar", "Violin", "Piano", "Flute"], correct: 2 },
+            { q: "What is the primary language spoken in Spain?", a: ["Portuguese", "Italian", "French", "Spanish"], correct: 3 },
+            { q: "What year did the Titanic sink?", a: ["1902", "1912", "1922", "1932"], correct: 1 }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let startTime;
+        let timer;
+        let timeLeft = 20;
+        let wrongAttempts = 0;
+        let currentQuestions = []; // To hold the 30 random questions for the current round
+        const numberOfQuestions = 30; // Set the number of questions per round
+
+        const questionEl = document.getElementById("question");
+        const answersEl = document.getElementById("answers");
+        const quizScreen = document.getElementById("quiz-screen");
+        const loseScreen = document.getElementById("lose-screen");
+        const winScreen = document.getElementById("win-screen");
+        const finalScore = document.getElementById("final-score");
+        const finalTime = document.getElementById("final-time");
+        const timerEl = document.getElementById("timer");
+        const hintEl = document.getElementById("hint");
+        const questionsLeftEl = document.getElementById("questions-left");
+
+        const music = document.getElementById('quizMusic');
+        const clickSfx = document.getElementById('clickSfx');
+        const correctSfx = document.getElementById('correctSfx');
+        const winSfx = document.getElementById('winSfx');
+        const loseSfx = document.getElementById('loseSfx');
+
+        window.onload = () => {
+            // Apply initial styles for the pop-in effect
+            document.body.style.opacity = 0;
+            document.querySelector('.container').style.transform = 'scale(0.9)';
+            document.querySelector('.container').style.opacity = 0;
+            const buttons = document.querySelectorAll('.container button');
+            buttons.forEach(button => {
+                button.style.transform = 'scale(0.95)';
+                button.style.opacity = 0;
+            });
+            const homeButton = document.getElementById('home-button');
+            if (homeButton) {homeButton.style.transform = 'scale(0.95)';
+                homeButton.style.opacity = 0;
+            }
+
+            const musicVolume = localStorage.getItem('musicVolume') || 100;
+            const sfxVolume = localStorage.getItem('sfxVolume') || 100;
+            music.volume = musicVolume / 100;
+            clickSfx.volume = sfxVolume / 100;
+            correctSfx.volume = sfxVolume / 100;
+            winSfx.volume = sfxVolume / 100;
+            loseSfx.volume = sfxVolume / 100;
+            music.muted = true; // Keep it muted initially
+            startGame();
+        };
+
+        // Attempt to play music on first user interaction
+        document.addEventListener('mousedown', playQuizMusic);
+        document.addEventListener('keydown', playQuizMusic);
+        document.addEventListener('touchstart', playQuizMusic);
+
+        function playQuizMusic() {
+            music.muted = false;
+            music.play().catch(err => console.warn("Autoplay blocked even with user interaction:", err));
+            // Remove the event listeners after the first interaction
+            document.removeEventListener('mousedown', playQuizMusic);
+            document.removeEventListener('keydown', playQuizMusic);
+            document.removeEventListener('touchstart', playQuizMusic);
+        }
+
+        function playClick() { clickSfx.currentTime = 0; clickSfx.play(); }
+        function playCorrect() { correctSfx.currentTime = 0; correctSfx.play(); }
+        function playWin() { winSfx.currentTime = 0; winSfx.play(); }
+        function playLose() { loseSfx.currentTime = 0; loseSfx.play(); }
+
+        function startGame() {
+            // Shuffle the questions and pick the first 'numberOfQuestions'
+            const shuffledQuestions = allQuestions.sort(() => Math.random() - 0.5);
+            currentQuestions = shuffledQuestions.slice(0, numberOfQuestions);
+            currentQuestionIndex = 0;
+            score = 0;
+            startTime = Date.now();
+            wrongAttempts = 0;
+            quizScreen.classList.remove("hidden");
+            loseScreen.classList.add("hidden");
+            winScreen.classList.add("hidden");
+            showQuestion();
+        }
+
+        function showQuestion() {
+            if (currentQuestionIndex >= currentQuestions.length) {
+                playWin();
+                endGame(true);
+                return;
+            }
+
+            clearInterval(timer);
+            timeLeft = 20;
+            timerEl.textContent = `Time left: ${timeLeft}`;
+            hintEl.textContent = "";
+            wrongAttempts = 0;
+            questionsLeftEl.textContent = `Questions left: ${currentQuestions.length - currentQuestionIndex}`;
+            timer = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = `Time left: ${timeLeft}`;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    playLose();
+                    endGame(false);
+                }
+            }, 1000);
+
+            const current = currentQuestions[currentQuestionIndex];
+            questionEl.textContent = current.q;
+            answersEl.innerHTML = "";
+            current.a.forEach((answer, i) => {
+                const btn = document.createElement("button");
+                btn.textContent = answer;
+                btn.onclick = () => handleAnswer(i);
+                answersEl.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selected) {
+            clearInterval(timer);
+            const current = currentQuestions[currentQuestionIndex];
+            playClick();
+            if (selected === current.correct) {
+                playCorrect();
+                score++;
+                currentQuestionIndex++;
+                showQuestion();
+            } else {
+                wrongAttempts++;
+                if (wrongAttempts >= 3) {
+                    hintEl.textContent = `Hint: The correct answer was "${current.a[current.correct]}"`;
+                }
+                playLose();
+                endGame(false);
+            }
+        }
+
+        function endGame(won) {
+            clearInterval(timer);
+            quizScreen.classList.add("hidden");
+            if (won) {
+                winScreen.classList.remove("hidden");
+                const timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
+                finalScore.textContent = `Score: ${score} / ${currentQuestions.length}`;
+                finalTime.textContent = `Time: ${timeTaken} seconds`;
+            } else {
+                loseScreen.classList.remove("hidden");
+            }
+        }
+
+        function restartGame() {
+            playClick();
+            startGame();
+        }
+    </script>
+</body>
+</html>
